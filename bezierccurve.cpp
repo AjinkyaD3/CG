@@ -3,32 +3,40 @@
 #include <iostream>
 using namespace std;
 
+// Max recursion depth
 int maxDepth;
 
+// 2D Point structure
 struct Point
 {
     float x, y;
 };
 
-Point getMid(Point a, Point b)
+// Get midpoint between two points
+Point midpoint(Point a, Point b)
 {
     return {(a.x + b.x) / 2, (a.y + b.y) / 2};
 }
 
-Point rotate(Point origin, Point p, float angleDeg)
+// Rotate point 'p' around origin by 'angle' degrees
+Point rotateAround(Point origin, Point p, float angleDeg)
 {
-    float angleRad = angleDeg * M_PI / 180;
-    float s = sin(angleRad), c = cos(angleRad);
+    float rad = angleDeg * M_PI / 180;
+    float s = sin(rad), c = cos(rad);
 
-    p.x -= origin.x;
-    p.y -= origin.y;
+    // Translate point to origin
+    float x = p.x - origin.x;
+    float y = p.y - origin.y;
 
-    float xnew = p.x * c - p.y * s;
-    float ynew = p.x * s + p.y * c;
+    // Rotate
+    float newX = x * c - y * s;
+    float newY = x * s + y * c;
 
-    return {xnew + origin.x, ynew + origin.y};
+    // Translate back
+    return {newX + origin.x, newY + origin.y};
 }
 
+// Draw Bezier curve with 4 control points
 void drawBezier(Point p0, Point p1, Point p2, Point p3)
 {
     glBegin(GL_LINE_STRIP);
@@ -49,62 +57,63 @@ void drawBezier(Point p0, Point p1, Point p2, Point p3)
     glEnd();
 }
 
-void bezierTree(Point start, Point ctrl1, Point ctrl2, Point end, int depth)
+// Recursive function to draw tree branches
+void drawTree(Point p0, Point p1, Point p2, Point p3, int depth)
 {
+    drawBezier(p0, p1, p2, p3); // Draw current branch
+
     if (depth == 0)
-    {
-        drawBezier(start, ctrl1, ctrl2, end);
-        return;
-    }
+        return; // Base case
 
-    drawBezier(start, ctrl1, ctrl2, end);
+    // Rotate control points to create left and right branches
+    Point newP1 = rotateAround(p3, p1, 30);
+    Point newP2 = rotateAround(p3, p2, -30);
 
-    // Create two new branches from the endpoint
-    Point mid = getMid(ctrl1, ctrl2);
-    Point newCtrl1 = rotate(end, mid, 30);
-    Point newCtrl2 = rotate(end, mid, -30);
+    // Extend the branch upwards
+    Point newP3 = {
+        p3.x + (p3.x - p0.x) * 0.5f,
+        p3.y + (p3.y - p0.y) * 0.5f};
 
-    Point next = {
-        end.x + (end.x - start.x) * 0.5f,
-        end.y + (end.y - start.y) * 0.5f};
-
-    bezierTree(end, newCtrl1, getMid(newCtrl1, next), next, depth - 1);
-    bezierTree(end, newCtrl2, getMid(newCtrl2, next), next, depth - 1);
+    // Recursive call for two branches
+    drawTree(p3, newP1, midpoint(newP1, newP3), newP3, depth - 1);
+    drawTree(p3, newP2, midpoint(newP2, newP3), newP3, depth - 1);
 }
 
+// OpenGL display callback
 void display()
 {
     glClear(GL_COLOR_BUFFER_BIT);
-    glColor3f(0.1, 0.2, 0.8);
+    glColor3f(0, 0.5f, 0); // Tree color
 
-    // Root bezier segment
+    // Initial trunk control points
     Point p0 = {250, 50};
     Point p1 = {260, 200};
     Point p2 = {240, 200};
     Point p3 = {250, 300};
 
-    bezierTree(p0, p1, p2, p3, maxDepth);
+    drawTree(p0, p1, p2, p3, maxDepth);
 
     glFlush();
 }
 
+// OpenGL initialization
 void init()
 {
-    glClearColor(1, 1, 1, 1);
+    glClearColor(1, 1, 1, 1); // White background
     glMatrixMode(GL_PROJECTION);
-    gluOrtho2D(0, 500, 0, 500);
+    gluOrtho2D(0, 500, 0, 500); // 2D canvas
 }
 
 int main(int argc, char **argv)
 {
-    cout << "Enter recursion depth (suggest 4-6): ";
+    cout << "Enter recursion depth (2 to 5 recommended): ";
     cin >> maxDepth;
 
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB);
     glutInitWindowSize(500, 500);
     glutInitWindowPosition(100, 100);
-    glutCreateWindow("Bezier Fractal Tree");
+    glutCreateWindow("Simplified Bezier Fractal Tree");
 
     init();
     glutDisplayFunc(display);
