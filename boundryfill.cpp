@@ -1,87 +1,87 @@
-#include <iostream>
-#include <math.h>
-#include <GL/glut.h>
+// Boundary Fill Algorithm using OpenGL (simplified with comments)
+#include <GL/glut.h> // OpenGL toolkit
+#include <iostream>  // Console I/O
+#include <math.h>    // Math functions
 
 using namespace std;
 
-void init() {
-    glClearColor(1.0, 1.0, 1.0, 0.0); // White background
-    glMatrixMode(GL_PROJECTION);
-    gluOrtho2D(0, 640, 0, 480); // Set up orthogonal projection
+// Set up OpenGL: white background and 2D orthographic projection
+void init()
+{
+    glClearColor(1.0, 1.0, 1.0, 0.0); // Set background color to white
+    glMatrixMode(GL_PROJECTION);      // Use projection matrix
+    gluOrtho2D(0, 640, 0, 480);       // Set coordinate system
 }
 
-// Helper function for floating-point comparison with tolerance
-bool isColorEqual(float* color1, float* color2, float tolerance = 0.1f) {
-    return (abs(color1[0] - color2[0]) < tolerance &&
-            abs(color1[1] - color2[1]) < tolerance &&
-            abs(color1[2] - color2[2]) < tolerance);
+// Compare two colors with tolerance
+bool isSameColor(float *a, float *b, float tol = 0.1f)
+{
+    return (fabs(a[0] - b[0]) < tol &&
+            fabs(a[1] - b[1]) < tol &&
+            fabs(a[2] - b[2]) < tol);
 }
 
-// Boundary Fill Algorithm (Recursive)
-void bound_it(int x, int y, float* fillColor, float* bc) {
-    float color[3];
+// Recursive boundary fill function
+void boundaryFill(int x, int y, float *fillColor, float *boundaryColor)
+{
+    float pixelColor[3];                                    // Store current pixel color
+    glReadPixels(x, y, 1, 1, GL_RGB, GL_FLOAT, pixelColor); // Read pixel
 
-    // Read the color of the current pixel at (x, y)
-    glReadPixels(x, y, 1.0, 1.0, GL_RGB, GL_FLOAT, color);
-    
-    // Check if the pixel is not part of the boundary or already filled with fill color
-    if (!isColorEqual(color, bc) && !isColorEqual(color, fillColor)) {
-        // Fill the pixel with the desired color
-        glColor3f(fillColor[0], fillColor[1], fillColor[2]);
+    // If pixel is not boundary and not filled yet
+    if (!isSameColor(pixelColor, boundaryColor) && !isSameColor(pixelColor, fillColor))
+    {
+        glColor3fv(fillColor); // Set fill color
         glBegin(GL_POINTS);
-            glVertex2i(x, y);
-        glEnd();
-        glFlush();
-        
-        // Recursive calls to neighboring pixels (smaller step size)
-        bound_it(x + 1, y, fillColor, bc);
-        bound_it(x - 1, y, fillColor, bc);
-        bound_it(x, y + 1, fillColor, bc);
-        bound_it(x, y - 1, fillColor, bc);
+        glVertex2i(x, y);
+        glEnd();   // Draw point
+        glFlush(); // Render immediately
+
+        // Recursive calls in 4 directions
+        boundaryFill(x + 1, y, fillColor, boundaryColor);
+        boundaryFill(x - 1, y, fillColor, boundaryColor);
+        boundaryFill(x, y + 1, fillColor, boundaryColor);
+        boundaryFill(x, y - 1, fillColor, boundaryColor);
     }
 }
 
-// Mouse click handler
-void mouse(int btn, int state, int x, int y) {
-    // Convert from window coordinates to OpenGL coordinates (flip y-axis)
-    int invertedY = 480 - y;
-    
-    // Define the boundary color (blue) and fill color (green)
-    float bCol[] = {0, 0, 1}; // Boundary color (blue)
-    float color[] = {0, 1, 0}; // Fill color (green)
-    
-    if (btn == GLUT_LEFT_BUTTON && state == GLUT_DOWN) {
-        cout << "Mouse clicked at x: " << x << ", y: " << invertedY << endl;
-        bound_it(x, invertedY, color, bCol); // Start filling from the clicked point
+// Mouse click handler: starts filling on left click
+void mouseClick(int button, int state, int x, int y)
+{
+    if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN)
+    {
+        float boundary[] = {0, 0, 1};             // Blue boundary color
+        float fill[] = {0, 1, 0};                 // Green fill color
+        boundaryFill(x, 480 - y, fill, boundary); // Convert y and fill
     }
 }
 
-// Function to draw a triangle
-void world() {
-    glLineWidth(3);
-    glPointSize(2);
-    glClear(GL_COLOR_BUFFER_BIT);
-    glColor3f(0, 0, 1); // Boundary color (blue)
-    
-    glBegin(GL_LINE_LOOP);
-        glVertex2i(150, 100);  // Vertex 1
-        glVertex2i(300, 300);  // Vertex 2
-        glVertex2i(450, 100);  // Vertex 3
+// Draw the triangle to fill
+void drawTriangle()
+{
+    glClear(GL_COLOR_BUFFER_BIT); // Clear screen
+    glColor3f(0, 0, 1);           // Set boundary color (blue)
+
+    glBegin(GL_LINE_LOOP); // Draw triangle outline
+    glVertex2i(150, 100);
+    glVertex2i(300, 300);
+    glVertex2i(450, 100);
     glEnd();
-    glFlush();
+    glFlush(); // Render the triangle
 }
 
-int main(int argc, char** argv) {
-    glutInit(&argc, argv);
-    glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB);
-    glutInitWindowSize(640, 480);
-    glutInitWindowPosition(200, 200);
-    glutCreateWindow("Boundary Fill Algorithm");
-    init();
-    
-    glutDisplayFunc(world);  // Draw the triangle
-    glutMouseFunc(mouse);    // Mouse click to start filling
-    
-    glutMainLoop();
+// Main program entry point
+int main(int argc, char **argv)
+{
+    glutInit(&argc, argv);                       // Initialize GLUT
+    glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB); // Single buffer, RGB
+    glutInitWindowSize(640, 480);                // Set window size
+    glutInitWindowPosition(200, 200);            // Set window position
+    glutCreateWindow("Boundary Fill Algorithm"); // Window title
+
+    init();                        // Setup OpenGL
+    glutDisplayFunc(drawTriangle); // Draw triangle on display
+    glutMouseFunc(mouseClick);     // Set mouse callback
+    glutMainLoop();                // Run the event loop
+
     return 0;
 }

@@ -1,114 +1,181 @@
-#include <GL/glut.h>
-#include <cmath>
-#include <iostream>
+/**
+ * Animation Implementation
+ * This program demonstrates basic animation techniques using OpenGL.
+ * It shows a bouncing ball with physics-based motion and collision detection.
+ */
 
-// Global variables
-float ballX = 320.0f;      // Ball's initial X position
-float ballY = 240.0f;      // Ball's initial Y position
-float ballRadius = 20.0f;  // Ball's radius
-float velocityY = 0.0f;    // Ball's velocity in Y direction
-float gravity = -0.2f;     // Gravity effect on the ball
-float bounceFactor = 0.8f; // Damping factor for bounce (simulating energy loss)
-float maxVelocity = 15.0f; // Maximum speed of the ball (ease in/ease out)
-bool movingDown = true;    // Flag to check if the ball is moving down
+#include <GL/glut.h>  // OpenGL Utility Toolkit
+#include <iostream>   // For console I/O
+#include <cmath>      // For mathematical functions
 
-// Function to initialize OpenGL
-void init()
-{
-    glClearColor(1.0f, 1.0f, 1.0f, 1.0f); // Set background color (white)
-    glMatrixMode(GL_PROJECTION);          // Set projection mode
-    gluOrtho2D(0, 640, 0, 480);           // Set 2D orthographic view
+using namespace std;
+
+// Window dimensions
+const int WIDTH = 640;
+const int HEIGHT = 480;
+
+// Ball properties
+float ballX = WIDTH / 2;      // Initial x position
+float ballY = HEIGHT / 2;     // Initial y position
+float ballRadius = 20;        // Ball radius
+float ballSpeedX = 2;         // Horizontal speed
+float ballSpeedY = 0;         // Vertical speed
+float gravity = 0.2;          // Gravity acceleration
+float friction = 0.99;        // Friction coefficient
+float elasticity = 0.8;       // Bounce elasticity
+
+/**
+ * Initialize OpenGL settings
+ */
+void init() {
+    glClearColor(1.0, 1.0, 1.0, 0.0);  // White background
+    glMatrixMode(GL_PROJECTION);
+    gluOrtho2D(0, WIDTH, 0, HEIGHT);
 }
 
-// Function to display the ball (draw a circle)
-void drawBall(float x, float y, float radius)
-{
-    glBegin(GL_POLYGON);
-    for (int i = 0; i < 360; i++)
-    {
-        float angle = i * 3.14159f / 180.0f; // Convert angle to radians
-        glVertex2f(x + radius * cos(angle), y + radius * sin(angle));
+/**
+ * Draw the ball
+ */
+void drawBall() {
+    glColor3f(1, 0, 0);  // Red color
+    glBegin(GL_TRIANGLE_FAN);
+    glVertex2f(ballX, ballY);  // Center point
+    
+    // Draw circle using triangles
+    for (int i = 0; i <= 360; i += 10) {
+        float angle = i * M_PI / 180;
+        float x = ballX + ballRadius * cos(angle);
+        float y = ballY + ballRadius * sin(angle);
+        glVertex2f(x, y);
     }
+    
     glEnd();
 }
 
-// Function to update the ball's position (animation logic)
-void update()
-{
-    // Apply gravity (simulating acceleration downwards)
-    if (movingDown)
-    {
-        velocityY += gravity; // Increasing velocity downwards
+/**
+ * Update ball position and handle collisions
+ */
+void updateBall() {
+    // Update position
+    ballX += ballSpeedX;
+    ballY += ballSpeedY;
+    
+    // Apply gravity
+    ballSpeedY -= gravity;
+    
+    // Apply friction
+    ballSpeedX *= friction;
+    
+    // Check for collisions with walls
+    if (ballX - ballRadius < 0) {
+        ballX = ballRadius;
+        ballSpeedX = -ballSpeedX * elasticity;
     }
-    else
-    {
-        velocityY -= gravity; // Decreasing velocity upwards (bounce effect)
+    else if (ballX + ballRadius > WIDTH) {
+        ballX = WIDTH - ballRadius;
+        ballSpeedX = -ballSpeedX * elasticity;
     }
-
-    // Update ball's Y position
-    ballY += velocityY;
-
-    // Implement squash and stretch: Increase radius when ball hits the ground
-    if (ballY - ballRadius <= 0)
-    {
-        ballY = ballRadius;        // Prevent the ball from going below the ground
-        movingDown = false;        // Ball is moving upwards after bounce
-        velocityY *= bounceFactor; // Apply bounce effect (less energy)
+    
+    if (ballY - ballRadius < 0) {
+        ballY = ballRadius;
+        ballSpeedY = -ballSpeedY * elasticity;
     }
-
-    // If the ball goes up and slows down, it should stop and reverse direction
-    if (ballY >= 240.0f && !movingDown)
-    {
-        movingDown = true; // Ball starts moving down again after peak
+    else if (ballY + ballRadius > HEIGHT) {
+        ballY = HEIGHT - ballRadius;
+        ballSpeedY = -ballSpeedY * elasticity;
     }
-
-    // If the ball's velocity becomes too slow, stop the animation (optional)
-    if (fabs(velocityY) < 0.1f && !movingDown)
-    {
-        velocityY = 0.0f;
-    }
-
-    glutPostRedisplay(); // Request to update the display again (for animation)
 }
 
-// Display function to draw the ball and update the screen
-void display()
-{
-    glClear(GL_COLOR_BUFFER_BIT); // Clear the screen
-
-    // Draw the ball with its current position
-    glColor3f(0.0f, 0.0f, 1.0f);        // Set ball color (blue)
-    drawBall(ballX, ballY, ballRadius); // Draw ball
-
-    glFlush();         // Render the drawing
-    glutSwapBuffers(); // Swap buffers for double buffering
+/**
+ * Timer function for animation
+ * @param value: Timer value
+ */
+void timer(int value) {
+    updateBall();
+    glutPostRedisplay();
+    glutTimerFunc(16, timer, 0);  // 60 FPS (1000ms/60 ≈ 16ms)
 }
 
-// Timer function to manage frame rate and animation speed
-void timer(int value)
-{
-    update();                    // Update ball position
-    glutTimerFunc(16, timer, 0); // Call timer every 16 milliseconds (60 FPS)
+/**
+ * Display function
+ * Called whenever the window needs to be redrawn
+ */
+void display() {
+    glClear(GL_COLOR_BUFFER_BIT);
+    
+    // Draw the ball
+    drawBall();
+    
+    glFlush();
 }
 
-// Main function to set up the window and start the animation
-int main(int argc, char **argv)
-{
+/**
+ * Mouse click handler
+ * Launches the ball when left mouse button is clicked
+ * @param btn: Mouse button pressed
+ * @param state: Button state (up/down)
+ * @param x, y: Mouse coordinates
+ */
+void mouse(int btn, int state, int x, int y) {
+    if (btn == GLUT_LEFT_BUTTON && state == GLUT_DOWN) {
+        // Convert from window coordinates to OpenGL coordinates
+        int invertedY = HEIGHT - y;
+        
+        // Set ball position to click location
+        ballX = x;
+        ballY = invertedY;
+        
+        // Set initial velocity
+        ballSpeedX = 5;
+        ballSpeedY = 5;
+    }
+}
+
+/**
+ * Keyboard function
+ * Handles keyboard input for resetting the ball
+ * @param key: Key pressed
+ * @param x, y: Mouse coordinates
+ */
+void keyboard(unsigned char key, int x, int y) {
+    if (key == 'r' || key == 'R') {
+        // Reset ball position and velocity
+        ballX = WIDTH / 2;
+        ballY = HEIGHT / 2;
+        ballSpeedX = 0;
+        ballSpeedY = 0;
+    }
+}
+
+/**
+ * Main function
+ * Entry point of the program
+ */
+int main(int argc, char** argv) {
     // Initialize GLUT
     glutInit(&argc, argv);
-    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB); // Double buffering for smooth animation
-    glutInitWindowSize(640, 480);                // Set window size
-    glutCreateWindow("Animation Principles - Bouncing Ball");
-
+    
+    // Set display mode (single buffer and RGB mode)
+    glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB);
+    
+    // Set window size and position
+    glutInitWindowSize(WIDTH, HEIGHT);
+    glutInitWindowPosition(200, 200);
+    
+    // Create window with title
+    glutCreateWindow("Bouncing Ball Animation");
+    
     // Initialize OpenGL settings
     init();
-
-    // Register display and timer functions
+    
+    // Register callback functions
     glutDisplayFunc(display);
-    glutTimerFunc(16, timer, 0); // Call timer to update animation
-
-    // Start the GLUT main loop (this keeps the window open)
+    glutMouseFunc(mouse);
+    glutKeyboardFunc(keyboard);
+    glutTimerFunc(0, timer, 0);
+    
+    // Enter the GLUT event processing loop
     glutMainLoop();
-
+    
     return 0;
 }
