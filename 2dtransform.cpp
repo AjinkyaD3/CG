@@ -1,201 +1,175 @@
-#include <iostream>
-#include <math.h>
-#include <time.h>
 #include <GL/glut.h>
+#include <iostream>
 #include <vector>
+#include <cmath>
 using namespace std;
-int edge;
-vector<int> xpoint;
-vector<int> ypoint;
-int ch;
-double round(double d)
+
+// Store polygon points
+vector<int> xpoints, ypoints;
+int edges; // Number of polygon edges
+int choice;
+
+// Round-off function
+double roundOff(double value)
 {
-    return floor(d + 0.5);
+    return floor(value + 0.5);
 }
+
+// OpenGL Initialization
 void init()
 {
-    glClearColor(1.0, 1.0, 1.0, 0.0);
-    glMatrixMode(GL_PROJECTION);
-    gluOrtho2D(0, 640, 0, 480);
+    glClearColor(1, 1, 1, 0);   // White background
+    gluOrtho2D(0, 640, 0, 480); // 2D projection
     glClear(GL_COLOR_BUFFER_BIT);
 }
-void translation()
+
+// Draw the initial polygon
+void drawPolygon(float r, float g, float b)
+{
+    glColor3f(r, g, b); // RGB color
+    glBegin(GL_POLYGON);
+    for (int i = 0; i < edges; i++)
+    {
+        glVertex2i(xpoints[i], ypoints[i]);
+    }
+    glEnd();
+    glFlush();
+}
+
+// Translation
+void translatePolygon()
 {
     int tx, ty;
-    cout << "\t Enter Tx, Ty \n";
+    cout << "Enter Tx and Ty (translation factors): ";
     cin >> tx >> ty;
-    // Translate the point
-    for (int i = 0; i < edge; i++)
+
+    for (int i = 0; i < edges; i++)
     {
-        xpoint[i] = xpoint[i] + tx;
-        ypoint[i] = ypoint[i] + ty;
+        xpoints[i] += tx;
+        ypoints[i] += ty;
     }
-    glBegin(GL_POLYGON);
-    glColor3f(0, 0, 1);
-    for (int i = 0; i < edge; i++)
-    {
-        glVertex2i(xpoint[i], ypoint[i]);
-    }
-    glEnd();
-    glFlush();
+
+    drawPolygon(0, 0, 1); // Blue polygon
 }
-void rotaion()
+
+// Scaling (origin at screen center)
+void scalePolygon()
 {
-    int cx, cy;
-    cout << "\n Enter Ar point x , y ";
-    cin >> cx >> cy;
-    cx = cx + 320;
-    cy = cy + 240;
-    glColor3f(0.0, 1.0, 0.0);
-    glBegin(GL_POINTS);
-    glVertex2i(cx, cy);
-    glEnd();
-    glFlush();
-    double the;
-    cout << "\n Enter thetha ";
-    cin >> the;
-    the = the * 3.14 / 180;
-    glColor3f(0, 0, 1.0);
-    glBegin(GL_POLYGON);
-    for (int i = 0; i < edge; i++)
-    {
-        glVertex2i(round(((xpoint[i] - cx) * cos(the) - ((ypoint[i] - cy) * sin(the))) +
-                         cx),
-                   round(((xpoint[i] - cx) * sin(the) + ((ypoint[i] - cy) * cos(the))) + cy));
-    }
-    glEnd();
-    glFlush();
-}
-void scale()
-{
-    glColor3f(1.0, 0, 0);
-    glBegin(GL_POLYGON);
-    for (int i = 0; i < edge; i++)
-    {
-        glVertex2i(xpoint[i] - 320, ypoint[i] - 240);
-    }
-    glEnd();
-    glFlush();
-    cout << "\n\tIn Scaling whole screen is 1st Qudrant \n";
     int sx, sy;
-    cout << "\t Enter sx, sy \n";
-    cin >> sx >> sy; // scale the point
-    for (int i = 0; i < edge; i++)
+    cout << "Enter Sx and Sy (scaling factors): ";
+    cin >> sx >> sy;
+
+    for (int i = 0; i < edges; i++)
     {
-        xpoint[i] = (xpoint[i] - 320) * sx;
-        ypoint[i] = (ypoint[i] - 240) * sy;
+        xpoints[i] = (xpoints[i] - 320) * sx + 320;
+        ypoints[i] = (ypoints[i] - 240) * sy + 240;
     }
-    glColor3f(0, 0, 1.0);
-    glBegin(GL_POLYGON);
-    for (int i = 0; i < edge; i++)
-    {
-        glVertex2i(xpoint[i], ypoint[i]);
-    }
-    glEnd();
-    glFlush();
+
+    drawPolygon(0, 1, 0); // Green polygon
 }
-void reflection()
+
+// Rotation about an arbitrary point
+void rotatePolygon()
 {
-    char reflection;
-    cout << "Enter Reflection Axis \n";
-    cin >> reflection;
-    if (reflection == 'x' || reflection == 'X')
+    int rx, ry;
+    double angle;
+    cout << "Enter Arbitrary Point (x y): ";
+    cin >> rx >> ry;
+    cout << "Enter Rotation Angle (in degrees): ";
+    cin >> angle;
+
+    angle = angle * M_PI / 180; // Convert to radians
+
+    for (int i = 0; i < edges; i++)
     {
-        glColor3f(0.0, 0.0, 1.0);
-        glBegin(GL_POLYGON);
-        for (int i = 0; i < edge; i++)
-        {
-            glVertex2i(xpoint[i], (ypoint[i] * -1) + 480);
-        }
-        glEnd();
-        glFlush();
+        int x = xpoints[i];
+        int y = ypoints[i];
+        xpoints[i] = roundOff((x - rx) * cos(angle) - (y - ry) * sin(angle) + rx);
+        ypoints[i] = roundOff((x - rx) * sin(angle) + (y - ry) * cos(angle) + ry);
     }
-    else if (reflection == 'y' || reflection == 'Y')
-    {
-        glColor3f(0.0, 0.0, 1.0);
-        glBegin(GL_POLYGON);
-        for (int i = 0; i < edge; i++)
-        {
-            glVertex2i((xpoint[i] * -1) + 640, (ypoint[i]));
-        }
-        glEnd();
-        glFlush();
-    }
+
+    drawPolygon(1, 0, 0); // Red polygon
 }
-void Draw()
+
+// Reflection over X or Y axis
+void reflectPolygon()
 {
-    if (ch == 2 || ch == 3 || ch == 4)
+    char axis;
+    cout << "Reflect over which axis (X or Y)? ";
+    cin >> axis;
+
+    for (int i = 0; i < edges; i++)
     {
-        glColor3f(1.0, 0, 0);
-        glBegin(GL_LINES);
-        glVertex2i(0, 240);
-        glVertex2i(640, 240);
-        glEnd();
-        glColor3f(1.0, 0, 0);
-        glBegin(GL_LINES);
-        glVertex2i(320, 0);
-        glVertex2i(320, 480);
-        glEnd();
-        glFlush();
-        glColor3f(1.0, 0, 0);
-        glBegin(GL_POLYGON);
-        for (int i = 0; i < edge; i++)
+        if (axis == 'x' || axis == 'X')
         {
-            glVertex2i(xpoint[i], ypoint[i]);
+            ypoints[i] = 480 - ypoints[i]; // Reflect over X-axis (invert y)
         }
-        glEnd();
-        glFlush();
+        else if (axis == 'y' || axis == 'Y')
+        {
+            xpoints[i] = 640 - xpoints[i]; // Reflect over Y-axis (invert x)
+        }
     }
-    if (ch == 1)
+
+    drawPolygon(0, 0, 1); // Blue polygon
+}
+
+// GLUT display function
+void display()
+{
+    drawPolygon(1, 0, 0); // Original polygon in red
+
+    switch (choice)
     {
-        scale();
-    }
-    else if (ch == 2)
-    {
-        rotaion();
-    }
-    else if (ch == 3)
-    {
-        reflection();
-    }
-    else if (ch == 4)
-    {
-        translation();
+    case 1:
+        scalePolygon();
+        break;
+    case 2:
+        rotatePolygon();
+        break;
+    case 3:
+        reflectPolygon();
+        break;
+    case 4:
+        translatePolygon();
+        break;
     }
 }
+
+// Main function
 int main(int argc, char **argv)
 {
-    cout << "\n \t Enter 1) Scaling ";
-    cout << "\n \t Enter 2) Rotation about arbitrary point";
-    cout << "\n \t Enter 3) Reflection";
-    cout << "\n \t Enter 4) Translation \n \t";
-    cin >> ch;
-    if (ch == 1 || ch == 2 || ch == 3 || ch == 4)
+    cout << "2D Transformations:\n";
+    cout << "1. Scaling\n2. Rotation\n3. Reflection\n4. Translation\n";
+    cout << "Enter your choice (1-4): ";
+    cin >> choice;
+
+    if (choice < 1 || choice > 4)
     {
-        cout << "Enter No of edges \n";
-        cin >> edge;
-        int xpointnew, ypointnew;
-        cout << " Enter" << edge << " point of polygon \n";
-        for (int i = 0; i < edge; i++)
-        {
-            cout << "Enter " << i << " Point ";
-            cin >> xpointnew >> ypointnew;
-            xpoint.push_back(xpointnew + 320);
-            ypoint.push_back(ypointnew + 240);
-        }
-        glutInit(&argc, argv);
-        glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB);
-        glutInitWindowSize(640, 480);
-        glutInitWindowPosition(200, 200);
-        glutCreateWindow("2D");
-        init();
-        glutDisplayFunc(Draw);
-        glutMainLoop();
+        cout << "Invalid choice. Exiting.\n";
         return 0;
     }
-    else
+
+    cout << "Enter number of edges: ";
+    cin >> edges;
+
+    cout << "Enter " << edges << " polygon points (x y):\n";
+    for (int i = 0; i < edges; i++)
     {
-        cout << "\n \t Check Input run again";
-        return 0;
+        int x, y;
+        cin >> x >> y;
+        xpoints.push_back(x + 320); // Shift origin to center (320, 240)
+        ypoints.push_back(y + 240);
     }
+
+    // Initialize GLUT
+    glutInit(&argc, argv);
+    glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB);
+    glutInitWindowSize(640, 480);
+    glutInitWindowPosition(100, 100);
+    glutCreateWindow("2D Transformations");
+    init();
+    glutDisplayFunc(display);
+    glutMainLoop();
+
+    return 0;
 }
