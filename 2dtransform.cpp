@@ -1,122 +1,84 @@
 #include <GL/glut.h>
-#include <iostream>
 #include <vector>
 #include <cmath>
+#include <iostream>
 using namespace std;
 
-// Store polygon points
 vector<int> xpoints, ypoints;
-int edges; // Number of polygon edges
-int choice;
+int edges, choice;
 
-// Round-off function
-double roundOff(double value)
-{
-    return floor(value + 0.5);
-}
-
-// OpenGL Initialization
 void init()
 {
-    glClearColor(1, 1, 1, 0);   // White background
-    gluOrtho2D(0, 640, 0, 480); // 2D projection
-    glClear(GL_COLOR_BUFFER_BIT);
+    glClearColor(1, 1, 1, 0); // White background
+    gluOrtho2D(0, 640, 0, 480);
 }
 
-// Draw the initial polygon
 void drawPolygon(float r, float g, float b)
 {
-    glColor3f(r, g, b); // RGB color
+    glColor3f(r, g, b);
     glBegin(GL_POLYGON);
     for (int i = 0; i < edges; i++)
-    {
         glVertex2i(xpoints[i], ypoints[i]);
-    }
     glEnd();
     glFlush();
 }
 
-// Translation
 void translatePolygon()
 {
     int tx, ty;
-    cout << "Enter Tx and Ty (translation factors): ";
+    cout << "Enter Tx and Ty: ";
     cin >> tx >> ty;
-
     for (int i = 0; i < edges; i++)
     {
         xpoints[i] += tx;
         ypoints[i] += ty;
     }
-
-    drawPolygon(0, 0, 1); // Blue polygon
 }
 
-// Scaling (origin at screen center)
 void scalePolygon()
 {
-    int sx, sy;
-    cout << "Enter Sx and Sy (scaling factors): ";
+    float sx, sy;
+    cout << "Enter Sx and Sy: ";
     cin >> sx >> sy;
-
     for (int i = 0; i < edges; i++)
     {
         xpoints[i] = (xpoints[i] - 320) * sx + 320;
         ypoints[i] = (ypoints[i] - 240) * sy + 240;
     }
-
-    drawPolygon(0, 1, 0); // Green polygon
 }
 
-// Rotation about an arbitrary point
 void rotatePolygon()
 {
-    int rx, ry;
-    double angle;
-    cout << "Enter Arbitrary Point (x y): ";
-    cin >> rx >> ry;
-    cout << "Enter Rotation Angle (in degrees): ";
+    float angle;
+    cout << "Enter angle (degrees): ";
     cin >> angle;
-
-    angle = angle * M_PI / 180; // Convert to radians
-
+    angle = angle * M_PI / 180;
     for (int i = 0; i < edges; i++)
     {
-        int x = xpoints[i];
-        int y = ypoints[i];
-        xpoints[i] = roundOff((x - rx) * cos(angle) - (y - ry) * sin(angle) + rx);
-        ypoints[i] = roundOff((x - rx) * sin(angle) + (y - ry) * cos(angle) + ry);
+        int x = xpoints[i] - 320;
+        int y = ypoints[i] - 240;
+        xpoints[i] = cos(angle) * x - sin(angle) * y + 320;
+        ypoints[i] = sin(angle) * x + cos(angle) * y + 240;
     }
-
-    drawPolygon(1, 0, 0); // Red polygon
 }
 
-// Reflection over X or Y axis
 void reflectPolygon()
 {
     char axis;
-    cout << "Reflect over which axis (X or Y)? ";
+    cout << "Enter axis (X or Y): ";
     cin >> axis;
-
     for (int i = 0; i < edges; i++)
     {
-        if (axis == 'x' || axis == 'X')
-        {
-            ypoints[i] = 480 - ypoints[i]; // Reflect over X-axis (invert y)
-        }
-        else if (axis == 'y' || axis == 'Y')
-        {
-            xpoints[i] = 640 - xpoints[i]; // Reflect over Y-axis (invert x)
-        }
+        if (axis == 'X' || axis == 'x')
+            ypoints[i] = 480 - ypoints[i];
+        else if (axis == 'Y' || axis == 'y')
+            xpoints[i] = 640 - xpoints[i];
     }
-
-    drawPolygon(0, 0, 1); // Blue polygon
 }
 
-// GLUT display function
 void display()
 {
-    drawPolygon(1, 0, 0); // Original polygon in red
+    drawPolygon(1, 0, 0); // Red original
 
     switch (choice)
     {
@@ -133,43 +95,32 @@ void display()
         translatePolygon();
         break;
     }
+
+    drawPolygon(0, 0, 1); // Blue transformed
 }
 
-// Main function
 int main(int argc, char **argv)
 {
-    cout << "2D Transformations:\n";
-    cout << "1. Scaling\n2. Rotation\n3. Reflection\n4. Translation\n";
-    cout << "Enter your choice (1-4): ";
+    cout << "1. Scale\n2. Rotate\n3. Reflect\n4. Translate\nEnter choice: ";
     cin >> choice;
-
-    if (choice < 1 || choice > 4)
-    {
-        cout << "Invalid choice. Exiting.\n";
-        return 0;
-    }
 
     cout << "Enter number of edges: ";
     cin >> edges;
-
-    cout << "Enter " << edges << " polygon points (x y):\n";
+    cout << "Enter " << edges << " points (x y):\n";
     for (int i = 0; i < edges; i++)
     {
         int x, y;
         cin >> x >> y;
-        xpoints.push_back(x + 320); // Shift origin to center (320, 240)
+        xpoints.push_back(x + 320);
         ypoints.push_back(y + 240);
     }
 
-    // Initialize GLUT
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB);
     glutInitWindowSize(640, 480);
-    glutInitWindowPosition(100, 100);
     glutCreateWindow("2D Transformations");
     init();
     glutDisplayFunc(display);
     glutMainLoop();
-
     return 0;
 }

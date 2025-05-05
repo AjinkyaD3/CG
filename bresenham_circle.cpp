@@ -23,6 +23,7 @@ void plot(int xc, int yc, int x, int y)
 void drawCircle(int xc, int yc, int r)
 {
     int x = 0, y = r;  // Start from top of the circle
+
     int d = 3 - 2 * r; // Initial decision parameter
 
     while (x <= y)

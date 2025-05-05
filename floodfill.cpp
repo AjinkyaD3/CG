@@ -1,47 +1,46 @@
-#include <GL/glut.h> // For OpenGL functions
-#include <queue>     // For queue used in flood fill
+#include <GL/glut.h>
+#include <queue> // For flood fill using queue
 using namespace std;
 
-bool visited[640][480] = {false}; // Keeps track of filled pixels
+bool visited[640][480] = {false}; // To track filled pixels
 
-// Initializes OpenGL window
+// OpenGL initialization
 void init()
 {
-    glClearColor(1, 1, 1, 1); // Set white background
-    glMatrixMode(GL_PROJECTION);
-    gluOrtho2D(0, 640, 0, 480); // Set 2D coordinate system
+    glClearColor(1, 1, 1, 1);   // Set background to white
+    gluOrtho2D(0, 640, 0, 480); // Define 2D drawing area
 }
 
-// Draws a triangle boundary
+// Draws a triangle using lines
 void drawTriangle()
 {
-    glColor3f(0, 0, 0);    // Black triangle
-    glBegin(GL_LINE_LOOP); // Draw outline of triangle
-    glVertex2i(300, 100);
-    glVertex2i(300, 300);
-    glVertex2i(450, 100);
+    glColor3f(0, 0, 0);    // Black color for outline
+    glBegin(GL_LINE_LOOP); // Start drawing a closed shape
+    glVertex2i(300, 100);  // Bottom left
+    glVertex2i(300, 300);  // Top left
+    glVertex2i(500, 100);  // Bottom right
     glEnd();
-    glFlush(); // Display immediately
+    glFlush(); // Show immediately
 }
 
-// Sets pixel color at (x, y)
+// Plot a single point at (x, y) with given color
 void setPixel(int x, int y, float r, float g, float b)
 {
-    glColor3f(r, g, b); // Set desired fill color
-    glBegin(GL_POINTS);
-    glVertex2i(x, y); // Plot the point
+    glColor3f(r, g, b); // Set color
+    glBegin(GL_POINTS); // Draw a point
+    glVertex2i(x, y);
     glEnd();
     glFlush();
 }
 
-// Simple check if (x,y) lies inside a fixed triangle using bounding box (faster than area check)
-bool insideTriangle(int x, int y)
+// Check if (x, y) is inside the triangle's bounding box
+bool isInsideTriangle(int x, int y)
 {
-    return x >= 300 && x <= 450 && y >= 100 && y <= 300 &&
-           (x + y) <= 600; // Rough diagonal check to shape triangle
+    // Rough bounds and diagonal line check
+    return x >= 300 && x <= 500 && y >= 100 && y <= 300 && (x + y <= 600);
 }
 
-// Basic 4-directional queue-based Flood Fill
+// Flood fill using a queue (BFS approach)
 void floodFill(int x, int y, float r, float g, float b)
 {
     queue<pair<int, int>> q;
@@ -50,19 +49,26 @@ void floodFill(int x, int y, float r, float g, float b)
 
     while (!q.empty())
     {
-        auto [cx, cy] = q.front();
+        int cx = q.front().first;
+        int cy = q.front().second;
         q.pop();
-        if (!insideTriangle(cx, cy))
+
+        // Only fill if inside triangle shape
+        if (!isInsideTriangle(cx, cy))
             continue;
 
-        setPixel(cx, cy, r, g, b);
+        setPixel(cx, cy, r, g, b); // Fill the pixel with color
 
+        // Check 4 directions (up, down, left, right)
         int dx[] = {1, -1, 0, 0};
         int dy[] = {0, 0, 1, -1};
 
         for (int i = 0; i < 4; i++)
         {
-            int nx = cx + dx[i], ny = cy + dy[i];
+            int nx = cx + dx[i];
+            int ny = cy + dy[i];
+
+            // Only process if not visited and inside screen
             if (nx >= 0 && nx < 640 && ny >= 0 && ny < 480 && !visited[nx][ny])
             {
                 q.push({nx, ny});
@@ -72,33 +78,33 @@ void floodFill(int x, int y, float r, float g, float b)
     }
 }
 
-// Handles mouse click to start flood fill
-void mouse(int button, int state, int x, int y)
+// Handles mouse clicks
+void mouseClick(int button, int state, int x, int y)
 {
     if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN)
     {
-        int fy = 480 - y;                // Invert y-axis for OpenGL
-        floodFill(x, fy, 0.0, 1.0, 0.0); // Fill with green
+        int fy = 480 - y;                // Convert to OpenGL coordinate (invert y)
+        floodFill(x, fy, 0.0, 1.0, 0.0); // Start filling with green color
     }
 }
 
-// Display function to draw triangle
+// Display function for drawing shapes
 void display()
 {
-    glClear(GL_COLOR_BUFFER_BIT);
-    drawTriangle();
+    glClear(GL_COLOR_BUFFER_BIT); // Clear the screen
+    drawTriangle();               // Draw triangle outline
 }
 
-// Main function: sets up window and loop
+// Main function to set up OpenGL
 int main(int argc, char **argv)
 {
-    glutInit(&argc, argv);                       // Initialize GLUT
-    glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB); // Set display mode
-    glutInitWindowSize(640, 480);                // Window size
-    glutCreateWindow("Flood Fill Simple");       // Window title
-    init();                                      // Set up OpenGL
-    glutDisplayFunc(display);                    // Draw callback
-    glutMouseFunc(mouse);                        // Mouse click callback
-    glutMainLoop();                              // Enter loop
+    glutInit(&argc, argv);                         // Initialize GLUT
+    glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB);   // Use single buffer and RGB mode
+    glutInitWindowSize(640, 480);                  // Set window size
+    glutCreateWindow("Flood Fill - Simple Logic"); // Window title
+    init();                                        // Set background and projection
+    glutDisplayFunc(display);                      // Call display() on startup
+    glutMouseFunc(mouseClick);                     // Handle mouse click
+    glutMainLoop();                                // Run the OpenGL loop
     return 0;
 }
