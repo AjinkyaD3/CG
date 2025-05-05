@@ -1,218 +1,201 @@
-#include <iostream>
-#include <GL/glut.h>
-#include <math.h>
-using namespace std;
+#include <GL/glut.h> // OpenGL Utility Toolkit
 
-// These are the clipping window boundaries (xmin, xmax, ymin, ymax)
-int xl = 50, xh = 200, yl = 50, yh = 200;
+// Define clipping window boundaries
+int xmin = 100, xmax = 300, ymin = 100, ymax = 300;
 
-// flag = 0 means waiting for first point, flag = 1 means waiting for second
-int flag = 0;
+// Coordinates of line endpoints
+float x_start, y_start, x_end, y_end;
 
-// Stores mouse click coordinates
-float u1, v1, u2, v2;
+int clickCount = 0;
 
-// Structure to store outcodes (top, bottom, right, left)
-struct code
+// Function to compute region code for a point
+int getCode(float x, float y)
 {
-    int t, b, r, l;
-};
-
-// Set background color and initialize OpenGL
-void init()
-{
-    glClearColor(1, 1, 1, 0);     // White background
-    glClear(GL_COLOR_BUFFER_BIT); // Clear the screen
-    glColor3f(0, 0, 0);           // Set drawing color to black
-}
-
-// Generate outcode for a point (whether it's outside top/bottom/left/right)
-code get_code(int u, int v)
-{
-    code c = {0, 0, 0, 0}; // Initially assume point is inside
-
-    if (u < xl)
-        c.l = 1; // Left
-    if (u > xh)
-        c.r = 1; // Right
-    if (v < yl)
-        c.b = 1; // Bottom
-    if (v > yh)
-        c.t = 1; // Top
-
-    return c;
-}
-
-// Draws a line using DDA (Digital Differential Analyzer) Algorithm
-void line(float u1, float v1, float u2, float v2)
-{
-    float dx = u2 - u1;
-    float dy = v2 - v1;
-    float x = u1, y = v1;
-
-    // Calculate steps based on the larger difference
-    int steps = abs(dx) > abs(dy) ? abs(dx) : abs(dy);
-
-    // Calculate the increment per step
-    float xi = dx / steps;
-    float yi = dy / steps;
-
-    // Start drawing the points of the line
-    glBegin(GL_POINTS);
-    glVertex2f(x, y);
-
-    for (int i = 0; i < steps; i++)
-    {
-        x += xi;
-        y += yi;
-        glVertex2f(x, y); // Draw point
-    }
-
-    glEnd();
-    glFlush(); // Show all points
-}
-
-// Draw the rectangular clipping window
-void draw_window()
-{
-    line(xl, yl, xh, yl); // Bottom edge
-    line(xl, yl, xl, yh); // Left edge
-    line(xh, yl, xh, yh); // Right edge
-    line(xl, yh, xh, yh); // Top edge
-}
-
-// Get mouse input to define line
-void mymouse(int button, int state, int x, int y)
-{
-    glColor3f(0, 0, 0); // Black color
-
-    if (state == GLUT_DOWN && flag == 0)
-    {
-        u1 = x;       // Save first point's x
-        v1 = 480 - y; // Save first point's y (invert Y for OpenGL)
-        flag = 1;     // Set flag for next point
-    }
-    else if (state == GLUT_DOWN && flag == 1)
-    {
-        u2 = x;
-        v2 = 480 - y;
-        flag = 2;             // Both points are now captured
-        line(u1, v1, u2, v2); // Draw the original line
-    }
+    int code = 0;
+    if (x < xmin)
+        code |= 1; // Left
+    if (x > xmax)
+        code |= 2; // Right
+    if (y < ymin)
+        code |= 4; // Bottom
+    if (y > ymax)
+        code |= 8; // Top
+    return code;
 }
 
 // Cohen-Sutherland Line Clipping Algorithm
-void cohen()
+void clipLine()
 {
-    code c1, c2, c;
-    float m;    // slope of the line
-    int xi, yi; // intersection points
-    int flag;
+    int code1 = getCode(x_start, y_start);
+    int code2 = getCode(x_end, y_end);
+    bool accept = false;
 
-    m = (v2 - v1) / (u2 - u1); // Calculate slope
-    c1 = get_code(u1, v1);     // Outcode for point 1
-    c2 = get_code(u2, v2);     // Outcode for point 2
-
-    while (1)
+    while (true)
     {
-        // If both points are inside the window, draw the line
-        if ((c1.t | c1.b | c1.r | c1.l | c2.t | c2.b | c2.r | c2.l) == 0)
-            break;
-
-        // If both points share an outside zone (AND of outcodes), discard line
-        else if ((c1.t & c2.t) || (c1.b & c2.b) || (c1.r & c2.r) || (c1.l & c2.l))
+        if ((code1 | code2) == 0)
         {
-            u1 = v1 = u2 = v2 = 0; // Line is completely outside, don't draw
+            // Both points inside — trivially accept
+            accept = true;
             break;
         }
-
-        // Line is partially inside — clip it
+        else if (code1 & code2)
+        {
+            // Both points share an outside region — trivially reject
+            break;
+        }
         else
         {
-            if (c1.l || c2.l) // If either point is left of window
-            {
-                xi = xl;
-                yi = v1 + m * (xl - u1);
-                flag = (c1.l == 1) ? 0 : 1;
+            // At least one point is outside — need to clip
+            float x, y;
+            int outCode = code1 ? code1 : code2;
+
+            // Find intersection point
+            if (outCode & 8)
+            { // Top
+                x = x_start + (x_end - x_start) * (ymax - y_start) / (y_end - y_start);
+                y = ymax;
             }
-            else if (c1.r || c2.r) // Right of window
-            {
-                xi = xh;
-                yi = v1 + m * (xh - u1);
-                flag = (c1.r == 1) ? 0 : 1;
+            else if (outCode & 4)
+            { // Bottom
+                x = x_start + (x_end - x_start) * (ymin - y_start) / (y_end - y_start);
+                y = ymin;
             }
-            else if (c1.b || c2.b) // Below window
-            {
-                xi = u1 + (1.0 / m) * (yl - v1);
-                yi = yl;
-                flag = (c1.b == 1) ? 0 : 1;
+            else if (outCode & 2)
+            { // Right
+                y = y_start + (y_end - y_start) * (xmax - x_start) / (x_end - x_start);
+                x = xmax;
             }
-            else if (c1.t || c2.t) // Above window
-            {
-                xi = u1 + (1.0 / m) * (yh - v1);
-                yi = yh;
-                flag = (c1.t == 1) ? 0 : 1;
+            else
+            { // Left
+                y = y_start + (y_end - y_start) * (xmin - x_start) / (x_end - x_start);
+                x = xmin;
             }
 
-            c = get_code(xi, yi); // Get outcode for intersection point
-
-            // Replace the outside point with the intersection
-            if (flag == 0)
+            // Replace the point outside with intersection
+            if (outCode == code1)
             {
-                u1 = xi;
-                v1 = yi;
-                c1 = c;
+                x_start = x;
+                y_start = y;
+                code1 = getCode(x_start, y_start);
             }
             else
             {
-                u2 = xi;
-                v2 = yi;
-                c2 = c;
+                x_end = x;
+                y_end = y;
+                code2 = getCode(x_end, y_end);
             }
         }
     }
 
-    // Finally, draw the window and clipped line
-    draw_window();
-    line(u1, v1, u2, v2);
+    // Draw the result
+    glClear(GL_COLOR_BUFFER_BIT);
+    glBegin(GL_LINE_LOOP); // Draw clipping rectangle
+    glVertex2i(xmin, ymin);
+    glVertex2i(xmax, ymin);
+    glVertex2i(xmax, ymax);
+    glVertex2i(xmin, ymax);
+    glEnd();
+
+    if (accept)
+    {
+        glBegin(GL_LINES); // Draw clipped line
+        glVertex2f(x_start, y_start);
+        glVertex2f(x_end, y_end);
+        glEnd();
+    }
+
+    glFlush(); // Show drawing
 }
 
-// Keyboard function
-void mykey(unsigned char key, int x, int y)
+// Mouse function to get 2 clicks for line endpoints
+
+void mouse(int button, int state, int x, int y)
 {
-    if (key == 'c') // Press 'c' to clip
+    if (state == GLUT_DOWN)
     {
-        init();
-        cohen();
+        if (clickCount == 0)
+        {
+            x_start = x;
+            y_start = 480 - y; // Invert Y for OpenGL
+            clickCount = 1;
+        }
+        else if (clickCount == 1)
+        {
+            x_end = x;
+            y_end = 480 - y;
+            clickCount = 2;
+
+            // Draw the clipping rectangle
+            glClear(GL_COLOR_BUFFER_BIT);
+            glBegin(GL_LINE_LOOP);
+            glVertex2i(xmin, ymin);
+            glVertex2i(xmax, ymin);
+            glVertex2i(xmax, ymax);
+            glVertex2i(xmin, ymax);
+            glEnd();
+
+            // Draw the original (unclipped) line
+            glBegin(GL_LINES);
+            glVertex2f(x_start, y_start);
+            glVertex2f(x_end, y_end);
+            glEnd();
+
+            glFlush(); // Show everything
+        }
     }
-    else if (key == 'r') // Press 'r' to reset
+}
+
+// Keyboard function: 'c' to clip, 'r' to reset
+void keyboard(unsigned char key, int x, int y)
+{
+    if (key == 'c' && clickCount == 2)
     {
-        init();
-        draw_window();
-        flag = 0;
+        clipLine(); // Clip and draw line
     }
+    else if (key == 'r')
+    {
+        clickCount = 0; // Reset
+        glClear(GL_COLOR_BUFFER_BIT);
+        glBegin(GL_LINE_LOOP); // Draw rectangle again
+        glVertex2i(xmin, ymin);
+        glVertex2i(xmax, ymin);
+        glVertex2i(xmax, ymax);
+        glVertex2i(xmin, ymax);
+        glEnd();
+        glFlush();
+    }
+}
+
+// OpenGL setup
+void init()
+{
+    glClearColor(1, 1, 1, 1);     // White background
+    gluOrtho2D(0, 640, 0, 480);   // Set 2D view
+    glColor3f(0, 0, 0);           // Black drawing color
+    glClear(GL_COLOR_BUFFER_BIT); // Clear screen
+
+    // Draw initial clipping rectangle
+    glBegin(GL_LINE_LOOP);
+    glVertex2i(xmin, ymin);
+    glVertex2i(xmax, ymin);
+    glVertex2i(xmax, ymax);
+    glVertex2i(xmin, ymax);
+    glEnd();
+    glFlush();
 }
 
 // Main function
 int main(int argc, char **argv)
 {
-    glutInit(&argc, argv);             // Initialize GLUT
-    glutInitDisplayMode(GLUT_SINGLE);  // Single buffer window
-    glutInitWindowSize(640, 480);      // Set window size
-    glutInitWindowPosition(0, 0);      // Window position
-    glutCreateWindow("Line_Clipping"); // Create window
+    glutInit(&argc, argv); // Initialize GLUT
+    glutInitDisplayMode(GLUT_SINGLE);
+    glutInitWindowSize(640, 480);
+    glutCreateWindow("Cohen-Sutherland Line Clipping");
 
-    gluOrtho2D(0, 640, 0, 480); // Set orthographic 2D view
+    init(); // Set up view and color
 
-    init();    // Set up OpenGL
-    glFlush(); // Render first frame
-
-    draw_window(); // Draw clipping rectangle
-
-    glutMouseFunc(mymouse);  // Mouse input for line
-    glutKeyboardFunc(mykey); // Keyboard input
-
-    glutMainLoop(); // Keep window open
-
+    glutMouseFunc(mouse);       // Mouse input
+    glutKeyboardFunc(keyboard); // Keyboard input
+    glutMainLoop();             // Run the loop
     return 0;
 }

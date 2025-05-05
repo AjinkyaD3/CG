@@ -22,7 +22,7 @@ void plot(int xc, int yc, int x, int y)
 // Function to draw a circle using Bresenham's Algorithm
 void drawCircle(int xc, int yc, int r)
 {
-    int x = 0, y = r;  // Start from top of the circle
+    int x = 0, y = r; // Start from top of the circle
 
     int d = 3 - 2 * r; // Initial decision parameter
 
