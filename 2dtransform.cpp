@@ -2,6 +2,7 @@
 #include <vector>
 #include <cmath>
 #include <iostream>
+
 using namespace std;
 
 vector<int> xpoints, ypoints;
@@ -9,8 +10,8 @@ int edges, choice;
 
 void init()
 {
-    glClearColor(1, 1, 1, 0); // White background
-    gluOrtho2D(0, 640, 0, 480);
+    glClearColor(1, 1, 1, 0);   // White background
+    gluOrtho2D(0, 640, 0, 480); // Setting up the coordinate system
 }
 
 void drawPolygon(float r, float g, float b)
@@ -23,80 +24,79 @@ void drawPolygon(float r, float g, float b)
     glFlush();
 }
 
-void translatePolygon()
+void transformPolygon()
 {
     int tx, ty;
-    cout << "Enter Tx and Ty: ";
-    cin >> tx >> ty;
-    for (int i = 0; i < edges; i++)
-    {
-        xpoints[i] += tx;
-        ypoints[i] += ty;
-    }
-}
-
-void scalePolygon()
-{
-    float sx, sy;
-    cout << "Enter Sx and Sy: ";
-    cin >> sx >> sy;
-    for (int i = 0; i < edges; i++)
-    {
-        xpoints[i] = (xpoints[i] - 320) * sx + 320;
-        ypoints[i] = (ypoints[i] - 240) * sy + 240;
-    }
-}
-
-void rotatePolygon()
-{
-    float angle;
-    cout << "Enter angle (degrees): ";
-    cin >> angle;
-    angle = angle * M_PI / 180;
-    for (int i = 0; i < edges; i++)
-    {
-        int x = xpoints[i] - 320;
-        int y = ypoints[i] - 240;
-        xpoints[i] = cos(angle) * x - sin(angle) * y + 320;
-        ypoints[i] = sin(angle) * x + cos(angle) * y + 240;
-    }
-}
-
-void reflectPolygon()
-{
+    float sx, sy, angle;
     char axis;
-    cout << "Enter axis (X or Y): ";
-    cin >> axis;
+
+    switch (choice)
+    {
+    case 1: // Scale
+        cout << "Enter scaling factors (Sx, Sy): ";
+        cin >> sx >> sy;
+        for (int i = 0; i < edges; i++)
+        {
+            xpoints[i] = (xpoints[i] - 320) * sx + 320;
+            ypoints[i] = (ypoints[i] - 240) * sy + 240;
+        }
+        break;
+
+    case 2: // Rotate
+        cout << "Enter angle (in degrees): ";
+        cin >> angle;
+        angle = angle * M_PI / 180; // Convert to radians
+        for (int i = 0; i < edges; i++)
+        {
+            int x = xpoints[i] - 320;
+            int y = ypoints[i] - 240;
+            xpoints[i] = cos(angle) * x - sin(angle) * y + 320;
+            ypoints[i] = sin(angle) * x + cos(angle) * y + 240;
+        }
+        break;
+
+    case 3: // Reflect
+        cout << "Enter axis (X or Y): ";
+        cin >> axis;
+        for (int i = 0; i < edges; i++)
+        {
+            if (axis == 'X' || axis == 'x')
+                ypoints[i] = 480 - ypoints[i];
+            else if (axis == 'Y' || axis == 'y')
+                xpoints[i] = 640 - xpoints[i];
+        }
+        break;
+
+    case 4: // Translate
+        cout << "Enter translation values (Tx, Ty): ";
+        cin >> tx >> ty;
+        for (int i = 0; i < edges; i++)
+        {
+            xpoints[i] += tx;
+            ypoints[i] += ty;
+        }
+        break;
+
+    default:
+        cout << "Invalid choice!" << endl;
+    }
+
+    // Debugging: Print the transformed points to verify the transformation
+    cout << "Transformed points: \n";
     for (int i = 0; i < edges; i++)
     {
-        if (axis == 'X' || axis == 'x')
-            ypoints[i] = 480 - ypoints[i];
-        else if (axis == 'Y' || axis == 'y')
-            xpoints[i] = 640 - xpoints[i];
+        cout << "(" << xpoints[i] << ", " << ypoints[i] << ")\n";
     }
 }
 
 void display()
 {
-    drawPolygon(1, 0, 0); // Red original
+    glClear(GL_COLOR_BUFFER_BIT); // Clear the screen
+    drawPolygon(1, 0, 0);         // Draw original polygon in red
 
-    switch (choice)
-    {
-    case 1:
-        scalePolygon();
-        break;
-    case 2:
-        rotatePolygon();
-        break;
-    case 3:
-        reflectPolygon();
-        break;
-    case 4:
-        translatePolygon();
-        break;
-    }
+    transformPolygon(); // Apply transformation
 
-    drawPolygon(0, 0, 1); // Blue transformed
+    drawPolygon(0, 0, 1); // Draw transformed polygon in blue
 }
 
 int main(int argc, char **argv)
@@ -111,7 +111,7 @@ int main(int argc, char **argv)
     {
         int x, y;
         cin >> x >> y;
-        xpoints.push_back(x + 320);
+        xpoints.push_back(x + 320); // Center the polygon at (320, 240)
         ypoints.push_back(y + 240);
     }
 
