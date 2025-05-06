@@ -2,103 +2,130 @@
 #include <vector>
 using namespace std;
 
-// Clipping window
-int wxmin = 200, wymin = 100, wxmax = 500, wymax = 350;
-vector<pair<int, int>> points;
+int xmin = 200, ymin = 100, xmax = 500, ymax = 350;
+vector<pair<int, int>> poly;
 
-void init() {
+void init()
+{
     glClearColor(1, 1, 1, 0);
     gluOrtho2D(0, 640, 0, 480);
 }
 
-void draw() {
+void draw()
+{
     glClear(GL_COLOR_BUFFER_BIT);
 
-    // Draw polygon
+    // Draw polygon (blue)
     glColor3f(0, 0, 1);
     glBegin(GL_POLYGON);
-    for (auto p : points) glVertex2i(p.first, p.second);
+    for (auto p : poly)
+        glVertex2i(p.first, p.second);
     glEnd();
 
-    // Draw clipping rectangle
+    // Draw clipping window (green)
     glColor3f(0, 1, 0);
     glBegin(GL_LINE_LOOP);
-    glVertex2i(wxmin, wymin); glVertex2i(wxmax, wymin);
-    glVertex2i(wxmax, wymax); glVertex2i(wxmin, wymax);
+    glVertex2i(xmin, ymin);
+    glVertex2i(xmax, ymin);
+    glVertex2i(xmax, ymax);
+    glVertex2i(xmin, ymax);
     glEnd();
 
     glFlush();
 }
 
-// Generic edge clipping
-void clip(char edge) {
-    vector<pair<int, int>> newPts;
-    for (int i = 0; i < points.size(); ++i) {
-        int x1 = points[i].first, y1 = points[i].second;
-        int x2 = points[(i+1)%points.size()].first, y2 = points[(i+1)%points.size()].second;
-        bool in1, in2;
-        float xi, yi;
+pair<int, int> intersect(int x1, int y1, int x2, int y2, char edge)
+{
+    float x = 0, y = 0;
+    if (edge == 'l' || edge == 'r')
+    {
+        int xEdge = (edge == 'l') ? xmin : xmax;
+        y = y1 + (y2 - y1) * (xEdge - x1) / float(x2 - x1);
+        x = xEdge;
+    }
+    else
+    {
+        int yEdge = (edge == 'b') ? ymin : ymax;
+        x = x1 + (x2 - x1) * (yEdge - y1) / float(y2 - y1);
+        y = yEdge;
+    }
+    return {int(x), int(y)};
+}
 
-        switch(edge) {
-            case 'l': in1 = x1 >= wxmin; in2 = x2 >= wxmin; break;
-            case 'r': in1 = x1 <= wxmax; in2 = x2 <= wxmax; break;
-            case 'b': in1 = y1 >= wymin; in2 = y2 >= wymin; break;
-            case 't': in1 = y1 <= wymax; in2 = y2 <= wymax; break;
+void clip(char edge)
+{
+    vector<pair<int, int>> newPoly;
+    for (int i = 0; i < poly.size(); i++)
+    {
+        auto [x1, y1] = poly[i];
+        auto [x2, y2] = poly[(i + 1) % poly.size()];
+        bool in1 = true, in2 = true;
+
+        if (edge == 'l')
+        {
+            in1 = x1 >= xmin;
+            in2 = x2 >= xmin;
+        }
+        if (edge == 'r')
+        {
+            in1 = x1 <= xmax;
+            in2 = x2 <= xmax;
+        }
+        if (edge == 'b')
+        {
+            in1 = y1 >= ymin;
+            in2 = y2 >= ymin;
+        }
+        if (edge == 't')
+        {
+            in1 = y1 <= ymax;
+            in2 = y2 <= ymax;
         }
 
         if (in1 && in2)
-            newPts.push_back({x2, y2});
-        else if (in1 && !in2) {
-            if (edge == 'l' || edge == 'r')
-                yi = y1 + (y2 - y1) * ((edge=='l'?wxmin:wxmax) - x1) / (x2 - x1),
-                newPts.push_back({(edge=='l'?wxmin:wxmax), yi});
-            else
-                xi = x1 + (x2 - x1) * ((edge=='b'?wymin:wymax) - y1) / (y2 - y1),
-                newPts.push_back({xi, (edge=='b'?wymin:wymax)});
-        }
-        else if (!in1 && in2) {
-            if (edge == 'l' || edge == 'r')
-                yi = y1 + (y2 - y1) * ((edge=='l'?wxmin:wxmax) - x1) / (x2 - x1),
-                newPts.push_back({(edge=='l'?wxmin:wxmax), yi});
-            else
-                xi = x1 + (x2 - x1) * ((edge=='b'?wymin:wymax) - y1) / (y2 - y1),
-                newPts.push_back({xi, (edge=='b'?wymin:wymax)});
-            newPts.push_back({x2, y2});
+            newPoly.push_back({x2, y2});
+        else if (in1 && !in2)
+            newPoly.push_back(intersect(x1, y1, x2, y2, edge));
+        else if (!in1 && in2)
+        {
+            newPoly.push_back(intersect(x1, y1, x2, y2, edge));
+            newPoly.push_back({x2, y2});
         }
     }
-
-    points = newPts;
+    poly = newPoly;
     draw();
     glutPostRedisplay();
 }
 
-void mouse(int btn, int state, int x, int y) {
-    if (btn == GLUT_LEFT_BUTTON && state == GLUT_DOWN) {
-        points.push_back({x, 480 - y});
+void mouse(int btn, int state, int x, int y)
+{
+    if (btn == GLUT_LEFT_BUTTON && state == GLUT_DOWN)
+    {
+        poly.push_back({x, 480 - y});
         draw();
     }
 }
 
-void menu(int opt) {
-    if (opt == 1) clip('l');
-    else if (opt == 2) clip('r');
-    else if (opt == 3) clip('t');
-    else if (opt == 4) clip('b');
+void keyboard(unsigned char key, int x, int y)
+{
+    if (key == 'c' || key == 'C')
+    {
+        clip('l');
+        clip('r');
+        clip('t');
+        clip('b');
+    }
 }
 
-int main(int argc, char** argv) {
+int main(int argc, char **argv)
+{
     glutInit(&argc, argv);
     glutInitWindowSize(640, 480);
-    glutCreateWindow("Simple Clipping");
+    glutCreateWindow("Polygon Clipping");
     init();
     glutDisplayFunc(draw);
     glutMouseFunc(mouse);
-    glutCreateMenu(menu);
-    glutAddMenuEntry("Left", 1);
-    glutAddMenuEntry("Right", 2);
-    glutAddMenuEntry("Top", 3);
-    glutAddMenuEntry("Bottom", 4);
-    glutAttachMenu(GLUT_RIGHT_BUTTON);
+    glutKeyboardFunc(keyboard);
     glutMainLoop();
     return 0;
 }
