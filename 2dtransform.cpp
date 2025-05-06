@@ -30,6 +30,9 @@ void transformPolygon()
     float sx, sy, angle;
     char axis;
 
+    // Center points for transformation
+    int cx = 320, cy = 240;
+
     switch (choice)
     {
     case 1: // Scale
@@ -37,8 +40,8 @@ void transformPolygon()
         cin >> sx >> sy;
         for (int i = 0; i < edges; i++)
         {
-            xpoints[i] = (xpoints[i] - 320) * sx + 320;
-            ypoints[i] = (ypoints[i] - 240) * sy + 240;
+            xpoints[i] = (xpoints[i] - cx) * sx + cx;
+            ypoints[i] = (ypoints[i] - cy) * sy + cy;
         }
         break;
 
@@ -48,10 +51,10 @@ void transformPolygon()
         angle = angle * M_PI / 180; // Convert to radians
         for (int i = 0; i < edges; i++)
         {
-            int x = xpoints[i] - 320;
-            int y = ypoints[i] - 240;
-            xpoints[i] = cos(angle) * x - sin(angle) * y + 320;
-            ypoints[i] = sin(angle) * x + cos(angle) * y + 240;
+            int x = xpoints[i] - cx;
+            int y = ypoints[i] - cy;
+            xpoints[i] = cos(angle) * x - sin(angle) * y + cx;
+            ypoints[i] = sin(angle) * x + cos(angle) * y + cy;
         }
         break;
 
