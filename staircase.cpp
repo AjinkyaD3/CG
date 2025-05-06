@@ -1,115 +1,108 @@
-#include <GL/glut.h>
-#include <iostream>
-#include <cmath>
+#include <GL/glut.h> // OpenGL header
+#include <cmath>     // For abs and round
 
-// Window dimensions
-const int WIDTH = 800, HEIGHT = 600;
-int points[4] = {-1, -1, -1, -1}; // {x1, y1, x2, y2}
+int x1_in, y1_in, x2_in, y2_in, clicks = 0; // Mouse click positions
 
-// Boxy staircase line algorithm
-void drawBoxyStaircaseLine(int x1, int y1, int x2, int y2)
+// Draw one point
+void plot(int x, int y)
 {
-    int dx = x2 - x1, dy = y2 - y1;
+    glBegin(GL_POINTS);
+    glVertex2i(x, y);
+    glEnd();
+}
+
+// DDA line drawing
+// Modified DDA to create a boxy staircase effect
+void DDA(int x1, int y1, int x2, int y2)
+{
+    float dx = x2 - x1, dy = y2 - y1;
     int steps = std::max(abs(dx), abs(dy));
-    float xInc = (float)dx / steps, yInc = (float)dy / steps;
+    float xInc = dx / steps;
+    float yInc = dy / steps;
     float x = x1, y = y1;
 
-    glBegin(GL_POINTS);
+    int lastX = round(x);
+    int lastY = round(y);
+    plot(lastX, lastY);
 
-    for (int i = 0; i <= steps; ++i)
+    for (int i = 1; i <= steps; i++)
     {
         x += xInc;
         y += yInc;
 
-        // To make the line boxy, alternate between x and y to create step-like movement
-        if (i % 2 == 0)
-            glVertex2i(round(x), round(y));
+        // Alternate between horizontal and vertical steps to make it boxy
+        if (i % 2 == 1)
+        {
+            plot(round(x), lastY); // horizontal step
+        }
         else
-            glVertex2i(round(x), round(y + 1)); // Slight shift for boxy effect
+        {
+            plot(lastX, round(y)); // vertical step
+        }
+
+        lastX = round(x);
+        lastY = round(y);
     }
-
-    glEnd();
 }
 
-// Draw coordinate axes
-void drawAxes()
-{
-    glColor3f(0.5, 0.5, 0.5);
-    glBegin(GL_LINES);
-    glVertex2i(-WIDTH / 2, 0);
-    glVertex2i(WIDTH / 2, 0);
-    glVertex2i(0, -HEIGHT / 2);
-    glVertex2i(0, HEIGHT / 2);
-    glEnd();
-}
-
-// Display function
+// Display the coordinate axes and the line
 void display()
 {
     glClear(GL_COLOR_BUFFER_BIT);
-    drawAxes();
+    glColor3f(1, 1, 1); // White axes
 
-    if (points[0] != -1 && points[2] != -1)
+    glBegin(GL_LINES);
+    glVertex2i(-500, 0);
+    glVertex2i(500, 0); // X-axis
+    glVertex2i(0, -500);
+    glVertex2i(0, 500); // Y-axis
+    glEnd();
+
+    if (clicks == 2)
     {
-        glColor3f(1.0, 1.0, 1.0);
-        drawBoxyStaircaseLine(points[0], points[1], points[2], points[3]);
+        glColor3f(1, 0, 0); // Red line
+        DDA(x1_in, y1_in, x2_in, y2_in);
     }
 
-    glutSwapBuffers();
+    glFlush();
 }
 
-// Mouse click handler
-void mouse(int button, int state, int x, int y)
+// Get two mouse clicks to define the line
+void mouse(int btn, int state, int x, int y)
 {
-    if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN)
+    if (btn == GLUT_LEFT_BUTTON && state == GLUT_DOWN)
     {
-        int cartX = x - WIDTH / 2, cartY = HEIGHT / 2 - y;
-
-        if (points[0] == -1)
+        if (clicks == 0)
         {
-            points[0] = cartX;
-            points[1] = cartY;
+            x1_in = x - 400;
+            y1_in = 400 - y;
         }
         else
         {
-            points[2] = cartX;
-            points[3] = cartY;
+            x2_in = x - 400;
+            y2_in = 400 - y;
+            glutPostRedisplay(); // Trigger display
         }
-
-        glutPostRedisplay();
+        clicks++;
     }
 }
 
-// Keyboard handler
-void keyboard(unsigned char key, int x, int y)
+// Setup background and projection
+void init()
 {
-    if (key == 'c' || key == 'C')
-    {
-        points[0] = points[1] = points[2] = points[3] = -1;
-        glutPostRedisplay();
-    }
-    else if (key == 27)
-        exit(0); // ESC
+    glClearColor(0, 0, 0, 1);         // Black background
+    gluOrtho2D(-500, 500, -500, 500); // 2D projection
 }
 
-// Main function
 int main(int argc, char **argv)
 {
-    glutInit(&argc, argv);
-    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
-    glutInitWindowSize(WIDTH, HEIGHT);
-    glutCreateWindow("Boxy Staircase Line");
-
-    glClearColor(0.0, 0.0, 0.0, 1.0);
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    gluOrtho2D(-WIDTH / 2, WIDTH / 2, -HEIGHT / 2, HEIGHT / 2);
-
+    glutInit(&argc, argv); // Initialize GLUT
+    glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB);
+    glutInitWindowSize(800, 800);
+    glutCreateWindow("DDA Line Drawing");
+    init();
     glutDisplayFunc(display);
     glutMouseFunc(mouse);
-    glutKeyboardFunc(keyboard);
-
-    std::cout << "Click to select 2 points. Press 'C' to clear. ESC to exit.\n";
     glutMainLoop();
     return 0;
 }
