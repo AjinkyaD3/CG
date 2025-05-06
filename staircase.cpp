@@ -7,40 +7,27 @@ const int WIDTH = 800, HEIGHT = 600;
 int points[4] = {-1, -1, -1, -1}; // {x1, y1, x2, y2}
 
 // Boxy staircase line algorithm
-void drawDDAStaircaseLine(int x1, int y1, int x2, int y2)
+void drawBoxyStaircaseLine(int x1, int y1, int x2, int y2)
 {
     int dx = x2 - x1, dy = y2 - y1;
-    bool steep = abs(dy) > abs(dx);
     int steps = std::max(abs(dx), abs(dy));
     float xInc = (float)dx / steps, yInc = (float)dy / steps;
     float x = x1, y = y1;
-    float lastX = x1, lastY = y1;
 
     glBegin(GL_POINTS);
-    glVertex2i(x1, y1);
 
-    for (int i = 1; i <= steps; ++i)
+    for (int i = 0; i <= steps; ++i)
     {
         x += xInc;
         y += yInc;
 
-        if (steep)
-        {
-            if (i % 2 == 1)
-                glVertex2i(lastX, round(y));
-            else
-                glVertex2i(round(x), lastY);
-        }
+        // To make the line boxy, alternate between x and y to create step-like movement
+        if (i % 2 == 0)
+            glVertex2i(round(x), round(y));
         else
-        {
-            if (i % 2 == 1)
-                glVertex2i(round(x), lastY);
-            else
-                glVertex2i(lastX, round(y));
-        }
-        lastX = round(x);
-        lastY = round(y);
+            glVertex2i(round(x), round(y + 1)); // Slight shift for boxy effect
     }
+
     glEnd();
 }
 
@@ -65,7 +52,7 @@ void display()
     if (points[0] != -1 && points[2] != -1)
     {
         glColor3f(1.0, 1.0, 1.0);
-        drawDDAStaircaseLine(points[0], points[1], points[2], points[3]);
+        drawBoxyStaircaseLine(points[0], points[1], points[2], points[3]);
     }
 
     glutSwapBuffers();
@@ -111,7 +98,7 @@ int main(int argc, char **argv)
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
     glutInitWindowSize(WIDTH, HEIGHT);
-    glutCreateWindow("DDA Boxy Staircase Line");
+    glutCreateWindow("Boxy Staircase Line");
 
     glClearColor(0.0, 0.0, 0.0, 1.0);
     glMatrixMode(GL_PROJECTION);
